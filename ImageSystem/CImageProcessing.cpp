@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "CImageProcessing.h"
 
+#define max2(a,b) (a>b?a:b)
+#define max3(a,b,c) (a>b?max2(a,c):max2(b,c))
+#define min2(a,b) (a<b?a:b)
+#define min3(a,b,c) (a<b?min2(a,c):min2(b,c))
 Mat CImageProcessing::RGB_2_Gray(Mat src)
 {
     Mat result;
@@ -144,6 +148,154 @@ Mat CImageProcessing::ImageDilation(Mat inputImage, int dilationSize)
 
 	return dilatedImage;
 }
+
+Mat CImageProcessing::ImageBrightness(Mat inputImage, int brightvalue)
+{
+	cv::Mat brightImage;
+	brightImage = cv::Mat::zeros(inputImage.size(), inputImage.type());
+	int height = inputImage.rows;
+	int width = inputImage.cols;
+	//cv::Mat temp;
+	//inputImage.convertTo(temp, CV_32F);
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
+			if (inputImage.channels() == 3) {
+				float b = inputImage.at<cv::Vec3b>(row, col)[0];
+				float g = inputImage.at<cv::Vec3b>(row, col)[1];
+				float r = inputImage.at<cv::Vec3b>(row, col)[2];
+				brightImage.at<Vec3b>(row, col)[0] = saturate_cast<uchar>(b + brightvalue);
+				brightImage.at<Vec3b>(row, col)[1] = saturate_cast<uchar>(g + brightvalue);
+				brightImage.at<Vec3b>(row, col)[2] = saturate_cast<uchar>(r + brightvalue);
+			}
+			else if (inputImage.channels() == 1) {
+				float v = inputImage.at<uchar>(row, col);
+				brightImage.at<uchar>(row, col) = saturate_cast<uchar>(v + brightvalue);
+			}
+		}
+	}
+	return brightImage;
+}
+
+Mat CImageProcessing::ImageSaturation(Mat inputImage, int saturation)
+{
+	float Increment = saturation * 1.0f / 100;
+	cv::Mat result = inputImage.clone();
+	int row = inputImage.rows;
+	int col = inputImage.cols;
+	for (int i = 0; i < row; ++i) {
+		uchar* t = result.ptr<uchar>(i);
+		uchar* s = inputImage.ptr<uchar>(i);
+		for (int j = 0; j < col; ++j) {
+			uchar b = s[3 * j];
+			uchar g = s[3 * j + 1];
+			uchar r = s[3 * j + 2];
+			float max = max3(r, g, b);
+			float min = min3(r, g, b);
+			float delta, value;
+			float L, S, alpha;
+			delta = (max - min) / 255;
+			if (delta == 0)
+				continue;
+			value = (max + min) / 255;
+			L = value / 2;
+			if (L < 0.5)
+				S = delta / value;
+			else
+				S = delta / (2 - value);
+			if (Increment >= 0) {
+				if ((Increment + S) >= 1)
+					alpha = S;
+				else
+					alpha = 1 - Increment;
+				alpha = 1 / alpha - 1;
+				t[3 * j + 2] = static_cast<uchar>(r + (r - L * 255) * alpha);
+				t[3 * j + 1] = static_cast<uchar>(g + (g - L * 255) * alpha);
+				t[3 * j] = static_cast<uchar>(b + (b - L * 255) * alpha);
+			}
+			else {
+				alpha = Increment;
+				t[3 * j + 2] = static_cast<uchar>(L * 255 + (r - L * 255) * (1 + alpha));
+				t[3 * j + 1] = static_cast<uchar>(L * 255 + (g - L * 255) * (1 + alpha));
+				t[3 * j] = static_cast<uchar>(L * 255 + (b - L * 255) * (1 + alpha));
+			}
+		}
+	}
+	return result;
+}
+
+Mat CImageProcessing::ImageSharpen(Mat inputImage, int percent, int type)
+{
+	cv::Mat sharpenImage;
+	cv::Mat s = inputImage.clone();
+	cv::Mat kernel;
+	switch (type) {
+		case 0:
+			kernel = (Mat_<int>(3, 3) <<
+				0, -1, 0,
+				-1, 4, -1,
+				0, -1, 0
+				);
+			break;
+		case 1:
+			kernel = (Mat_<int>(3, 3) <<
+				-1, -1, -1,
+				-1, 8, -1,
+				-1, -1, -1
+				);
+			break;
+		default:
+			kernel = (Mat_<int>(3, 3) <<
+				0, -1, 0,
+				-1, 4, -1,
+				0, -1, 0
+				);
+			break;
+	}
+	filter2D(s, s, s.depth(), kernel);
+	sharpenImage = inputImage + s * 0.01 * percent;
+	return sharpenImage;
+}
+
+Mat CImageProcessing::ColorTemperature(Mat inputImage, int percent)
+{
+	cv::Mat result = inputImage.clone();
+	int row = inputImage.rows;
+	int col = inputImage.cols;
+	int level = percent / 2;
+	for (int i = 0; i < row; ++i) {
+		uchar* a = inputImage.ptr<uchar>(i);
+		uchar* r = result.ptr<uchar>(i);
+		for (int j = 0; j < col; ++j) {
+			int R, G, B;
+			R = a[j * 3 + 2];
+			R = R + level;
+			if (R > 255)
+				r[j * 3 + 2] = 255;
+			else if (R < 0)
+				r[j * 3 + 2] = 0;
+			else
+				r[j * 3 + 2] = R;
+			G = a[j * 3 + 1];
+			G = G + level;
+			if (G > 255)
+				r[j * 3 + 1] = 255;
+			else if (G < 0)
+				r[j * 3 + 1] = 0;
+			else
+				r[j * 3 + 1] = G;
+			B = a[j * 3];
+			B = B + level;
+			if (B > 255)
+				r[j * 3] = 255;
+			else if (B < 0)
+				r[j * 3] = 0;
+			else
+				r[j * 3] = B;
+		}
+	}
+	return result;
+}
+
 
 Mat CImageProcessing::imageThresholdSegmentation(Mat inputImage, int threshold)
 {

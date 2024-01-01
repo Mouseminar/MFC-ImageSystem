@@ -65,4 +65,7 @@ public:
 	afx_msg void OnBnClickedButton2();
 
 	bool isopen;
+	CSliderCtrl m_slider1;
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	int slider_value;
 };
