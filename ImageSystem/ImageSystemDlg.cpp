@@ -24,15 +24,19 @@
 
 CImageSystemDlg::CImageSystemDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_IMAGESYSTEM_DIALOG, pParent)
+	, slider_value(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
+
 
 void CImageSystemDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_Picture1, m_p1);
 	DDX_Control(pDX, IDC_Picture2, m_p2);
+	DDX_Control(pDX, IDC_SLIDER4, m_slider1);
+	DDX_Slider(pDX, IDC_SLIDER4, slider_value);
 }
 
 BEGIN_MESSAGE_MAP(CImageSystemDlg, CDialogEx)
@@ -59,6 +63,7 @@ BEGIN_MESSAGE_MAP(CImageSystemDlg, CDialogEx)
 	ON_COMMAND(ID_32790, &CImageSystemDlg::OnGaussianFilter)
 	ON_COMMAND(ID_32791, &CImageSystemDlg::OnFace)
 	ON_BN_CLICKED(IDC_BUTTON2, &CImageSystemDlg::OnBnClickedButton2)
+	ON_WM_HSCROLL()
 END_MESSAGE_MAP()
 
 
@@ -74,12 +79,13 @@ BOOL CImageSystemDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-
+	m_slider1.SetRange(-100, 100);
+	//m_slider1.SetTicFreq(1);
+	m_slider1.SetPos(0);
 	isopen = false;
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
-
 // 如果向对话框添加最小化按钮，则需要下面的代码
 //  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
 //  这将由框架自动完成。
@@ -592,6 +598,23 @@ void CImageSystemDlg::OnBnClickedButton2()
 		imag.ReleaseDC();
 	}
 	else
+	{
+		MessageBox(TEXT("请先打开图片！"), TEXT("提示"));
+	}
+}
+
+void CImageSystemDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (isopen) {
+		CSliderCtrl* pSlidCtrl = (CSliderCtrl*)GetDlgItem(IDC_SLIDER4);
+		slider_value = pSlidCtrl->GetPos();//取得当前位置值
+		dst = ImageProcessing.ImageBrightness(src, slider_value);
+		imwrite("result.png", dst);
+		ShowDst();
+		CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
+	}
+	else 
 	{
 		MessageBox(TEXT("请先打开图片！"), TEXT("提示"));
 	}

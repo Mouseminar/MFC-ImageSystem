@@ -13,6 +13,10 @@ public:
 	//形态学处理
 	Mat ImageErosion(Mat inputImage, int erosionSize);	//腐蚀
 	Mat ImageDilation(Mat inputImage, int dilationSize);	//膨胀
+	Mat ImageBrightness(Mat inputImage, int brightvalue);	//亮度
+	Mat ImageSaturation(Mat inputImage, int saturation);	//饱和度
+	Mat ImageSharpen(Mat inputImage, int percent, int type);	//锐化
+	Mat ColorTemperature(Mat inputImage, int percent);		//色温调节
 
 	//图像分割
 	Mat imageThresholdSegmentation(Mat inputImage, int threshold);	//固定阈值分割
